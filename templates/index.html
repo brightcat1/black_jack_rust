@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<meta charset="utf-8" />
+		<title>Black Jack</title>
+	</head>
+
+	<body>
+		<div>
+			
+			<div>
+				<div>sum: {{ sum }}</div>
+				<form action="/draw" method="post">
+					<button>draw</button>
+				</form>
+			</div>
+			
+		</div>
+
+		<form action="/start" method="post">
+			<div>
+				<button>start</button>
+			</div>
+		</form>
+		<form action="/start" method="post">
+			<div>
+				<button>restart</button>
+			</div>
+		</form>
+	</body>
+	
+</html>
