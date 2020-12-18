@@ -15,10 +15,9 @@ enum Suits {
     Diamond,
     Club,
 }
-
 struct DrawCard {
-    draw_card_suite: String,
-    draw_card_num: u32,
+    suit: String,
+    num: u32,
 }
 
 #[derive(Template)]
@@ -91,18 +90,26 @@ async fn draw_card(
 #[get("/")]
 async fn index(db: web::Data<Pool<SqliteConnectionManager>>) -> Result<HttpResponse, MyError> {
     let conn = db.get()?;
-    let draw = conn.prepare("SELECT suit, number FROM deck")?;
+    let mut draw = conn.prepare("SELECT suit, number FROM drawn_card")?;
     let mut points = conn.prepare("SELECT player FROM points")?;
-    let a = points.query_map(params![], |row| {
-        let player: u32 = row.get(0)?;
+    let points_table_data = points.query_map(params![], |row| {
+        let player = row.get(0)?;
         Ok(player)
     })?;
+    let drawn_card_table_data = draw.query_map(params![], |row| {
+        let suit = row.get(0)?;
+        let num = row.get(1)?;
+        Ok(DrawCard{suit, num})
+    })?;
 
-    let sum = match a.last(){
+    let sum = match points_table_data.last(){
         None => 0,
         Some(x) => x.unwrap(),
     };
-    let card = DrawCard{draw_card_suite: "None".to_string(), draw_card_num: 0, };
+    let card = match drawn_card_table_data.last(){
+        None => DrawCard{suit: "None".to_string(), num: 0},
+        Some(x) => x.unwrap(),
+    };
     let html = PlayerPointTemplate{ sum, card };
     let response_body = html.render()?;
     Ok(HttpResponse::Ok()
@@ -120,6 +127,7 @@ async fn main() -> Result<(), actix_web::Error>{
         .expect("Failed to get the connection from the pool.");
     conn.execute("DROP TABLE IF EXISTS deck", params![]).expect("Failed to drop a table `deck`.");
     conn.execute("DROP TABLE IF EXISTS points", params![]).expect("Failed to drop a table `points`.");
+    conn.execute("DROP TABLE IF EXISTS drawn_card", params![]).expect("Failed to drop a table `drawn_card`.");
     conn.execute(
         "CREATE TABLE IF NOT EXISTS deck (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -133,6 +141,14 @@ async fn main() -> Result<(), actix_web::Error>{
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             player INTEGER NOT NULL,
             dealer INTEGER NOT NULL
+        )",
+        params![],
+    ).expect("Failed to create a table `points`.");
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS drawn_card (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            suit TEXT NOT NULL,
+            number INTEGER NOT NULL
         )",
         params![],
     ).expect("Failed to create a table `points`.");

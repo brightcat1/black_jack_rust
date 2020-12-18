@@ -10,7 +10,10 @@
 		<div>
 			
 			<div>
-				<div>sum: {{ sum }}</div>
+				{% if card.suit != "None" %}
+					<div>Total Points: {{ sum }}</div>
+					<div>Your Current Card: {{ card.num }} of {{ card.suit }} </div>
+				{% endif %}
 				<form action="/draw" method="post">
 					<button>draw</button>
 				</form>
