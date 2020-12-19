@@ -20,12 +20,20 @@ struct DrawCard {
     num: u32,
 }
 
+struct GameData {
+    player: u32,
+    dealer: u32,
+    stand: u32,
+}
+
 #[derive(Template)]
 #[template(path = "index.html")]
-struct PlayerPointTemplate{
-    sum: u32,
+struct BlackJackTemplate{
+    game_data: GameData,
     card: DrawCard,
+    result: String,
 }
+
 
 
 #[derive(Error, Debug)]
@@ -49,6 +57,7 @@ async fn start_game(
     let conn = db.get()?;
     conn.execute("DROP TABLE IF EXISTS deck", params![]).expect("Failed to drop a table `deck`.");
     conn.execute("DROP TABLE IF EXISTS points", params![]).expect("Failed to drop a table `points`.");
+    conn.execute("DROP TABLE IF EXISTS drawn_card", params![]).expect("Failed to drop a table `drawn_card`.");
     conn.execute(
         "CREATE TABLE IF NOT EXISTS deck (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -65,7 +74,16 @@ async fn start_game(
         )",
         params![],
     ).expect("Failed to create a table `points`.");
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS drawn_card (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            suit TEXT NOT NULL,
+            number INTEGER NOT NULL
+        )",
+        params![],
+    ).expect("Failed to create a table `drawn_card`.");
     conn.execute("INSERT INTO points (player, dealer) VALUES (0, 0)", params![])?;
+    conn.execute("INSERT INTO drawn_card (suit, number) VALUES ('None', 0)", params![])?;
     for suit in Suits::iter(){
         for num in 1..=13 {
             conn.execute("INSERT INTO deck (suit, number) VALUES (?1, $2)", params![suit.to_string(), num])?;
@@ -81,6 +99,27 @@ async fn draw_card(
     db: web::Data<r2d2::Pool<SqliteConnectionManager>>,
 ) -> Result<HttpResponse, MyError> {
     let conn = db.get()?;
+    let mut drawn_card = conn.prepare("SELECT * FROM deck ORDER BY RANDOM() LIMIT 1;")?;
+    let mut points = conn.prepare("SELECT player FROM points")?;
+    let points_table_data = points.query_map(params![], |row| {
+        let player = row.get(0)?;
+        Ok(player)
+    })?;
+    let sum = match points_table_data.last(){
+        None => 0,
+        Some(x) => x.unwrap(),
+    };
+    let drawn_card_table_data = drawn_card.query_map(params![], |row| {
+        let suit = row.get(0)?;
+        let num = row.get(1)?;
+        Ok(DrawCard{suit, num})
+    })?;
+    let card = match drawn_card_table_data.last(){
+        None => DrawCard{suit: "None".to_string(), num: 0},
+        Some(x) => x.unwrap(),
+    };
+    conn.execute("INSERT INTO drawn_card (suit, number) VALUES (?1, $2)", params![card.suit, card.num])?;
+    conn.execute("UPDATE points SET player = (?) WHERE id = 1", params![sum + card.num])?;
     conn.execute("DELETE FROM todo WHERE id=?", params![])?;
     Ok(HttpResponse::SeeOther()
         .header(header::LOCATION, "/")
@@ -90,11 +129,13 @@ async fn draw_card(
 #[get("/")]
 async fn index(db: web::Data<Pool<SqliteConnectionManager>>) -> Result<HttpResponse, MyError> {
     let conn = db.get()?;
-    let mut draw = conn.prepare("SELECT suit, number FROM drawn_card")?;
-    let mut points = conn.prepare("SELECT player FROM points")?;
-    let points_table_data = points.query_map(params![], |row| {
+    let mut draw = conn.prepare("SELECT suit, number,  FROM drawn_card")?;
+    let mut points = conn.prepare("SELECT player, dealer, stand_flag FROM points")?;
+    let game_data_row = points.query_map(params![], |row| {
         let player = row.get(0)?;
-        Ok(player)
+        let dealer = row.get(1)?;
+        let stand = row.get(2)?;
+        Ok(GameData{player, dealer, stand})
     })?;
     let drawn_card_table_data = draw.query_map(params![], |row| {
         let suit = row.get(0)?;
@@ -102,15 +143,26 @@ async fn index(db: web::Data<Pool<SqliteConnectionManager>>) -> Result<HttpRespo
         Ok(DrawCard{suit, num})
     })?;
 
-    let sum = match points_table_data.last(){
-        None => 0,
+    let game_data = match game_data_row.last(){
+        None => GameData{player: 0, dealer: 0, stand: 0},
         Some(x) => x.unwrap(),
     };
     let card = match drawn_card_table_data.last(){
         None => DrawCard{suit: "None".to_string(), num: 0},
         Some(x) => x.unwrap(),
     };
-    let html = PlayerPointTemplate{ sum, card };
+    let result = if game_data.player == 21{
+        "BlackJack! You Win!".to_string()
+    } else if game_data.stand == 1 && game_data.player > game_data.dealer{
+        "You Win!".to_string()
+    } else if game_data.stand == 1 && game_data.player < game_data.dealer{
+        "You Lose!".to_string()
+    } else if game_data.stand == 1 && game_data.player == game_data.dealer{
+        "Draw!".to_string()
+    } else {
+        "None".to_string()
+    };
+    let html = BlackJackTemplate{ game_data, card, result };
     let response_body = html.render()?;
     Ok(HttpResponse::Ok()
         .content_type("text/html")
@@ -148,10 +200,11 @@ async fn main() -> Result<(), actix_web::Error>{
         "CREATE TABLE IF NOT EXISTS drawn_card (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             suit TEXT NOT NULL,
-            number INTEGER NOT NULL
+            number INTEGER NOT NULL,
+            stand_flag INTEGER NOT NULL,
         )",
         params![],
-    ).expect("Failed to create a table `points`.");
+    ).expect("Failed to create a table `drawn_card`.");
     HttpServer::new(move || {
         App::new()
         .service(index)
