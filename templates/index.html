@@ -10,24 +10,41 @@
 		<div>
 			
 			<div>
-				<div>sum: {{ sum }}</div>
-				<form action="/draw" method="post">
-					<button>draw</button>
-				</form>
+				{% if result != "None" %}
+					<div>{{ result }}</div>
+					<div>Your Total Points: {{ game_data.player }}</div>
+					<div>Dealer Total Points: {{ game_data.dealer }}</div>
+					<form action="/start" method="post">
+						<div>
+							<button>restart</button>
+						</div>
+					</form>
+				{% else if card.suit != "None" %}
+					<div>Total Points: {{ game_data.player }}</div>
+					<div>Your Current Card: {{ card.num }}s of {{ card.suit }} </div>
+					<form action="/draw" method="post">
+						<button>draw</button>
+					</form>
+					<form action="/stand" method="post">
+						<button>stand</button>
+					</form>
+				{% else if game_data.dealer != 0 %}
+					<form action="/draw" method="post">
+						<button>draw</button>
+					</form>
+					<form action="/stand" method="post">
+						<button>stand</button>
+					</form>
+				{% endif %}
 			</div>
-			
 		</div>
-
-		<form action="/start" method="post">
-			<div>
-				<button>start</button>
-			</div>
-		</form>
-		<form action="/start" method="post">
-			<div>
-				<button>restart</button>
-			</div>
-		</form>
+		{% if game_data.dealer == 0 %}
+			<form action="/start" method="post">
+				<div>
+					<button>start</button>
+				</div>
+			</form>
+		{% endif %}
 	</body>
 	
 </html>
