@@ -17,7 +17,7 @@ enum Suits {
 }
 struct DrawCard {
     suit: String,
-    num: u32,
+    num: String,
 }
 
 struct GameData {
@@ -64,7 +64,7 @@ async fn start_game(
         "CREATE TABLE IF NOT EXISTS deck (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             suit TEXT NOT NULL,
-            number INTEGER NOT NULL
+            number TEXT NOT NULL
         )",
         params![],
     ).expect("Failed to create a table `deck`.");
@@ -81,7 +81,7 @@ async fn start_game(
         "CREATE TABLE IF NOT EXISTS drawn_card (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             suit TEXT NOT NULL,
-            number INTEGER NOT NULL
+            number TEXT NOT NULL
         )",
         params![],
     ).expect("Failed to create a table `drawn_card`.");
@@ -89,17 +89,27 @@ async fn start_game(
         "CREATE TABLE IF NOT EXISTS dealer_public_card (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             suit TEXT NOT NULL,
-            number INTEGER NOT NULL
+            number TEXT NOT NULL
         )",
         params![],
     ).expect("Failed to create a table `dealer_public_card`.");
-    conn.execute("INSERT INTO drawn_card (suit, number) VALUES ('None', 0)", params![])?;
+    conn.execute("INSERT INTO drawn_card (suit, number) VALUES ('None', 'None')", params![])?;
     for suit in Suits::iter(){
         for num in 1..=13 {
-            conn.execute("INSERT INTO deck (suit, number) VALUES (?1, $2)", params![suit.to_string(), num])?;
+            if num == 11{
+                conn.execute("INSERT INTO deck (suit, number) VALUES (?, 'Jack')", params![suit.to_string()])?;
+            } else if num == 12 {
+                conn.execute("INSERT INTO deck (suit, number) VALUES (?, 'Queen')", params![suit.to_string()])?;
+            } else if num == 13 {
+                conn.execute("INSERT INTO deck (suit, number) VALUES (?, 'King')", params![suit.to_string()])?;
+            } else if num == 1 {
+                conn.execute("INSERT INTO deck (suit, number) VALUES (?, 'Ace')", params![suit.to_string()])?;
+            } else {
+                conn.execute("INSERT INTO deck (suit, number) VALUES (?1, $2)", params![suit.to_string(), num.to_string()])?;
+            }
         }
     }
-    let mut dealer =0;
+    let mut dealer:u32 =0;
     let mut drawn_card = conn.prepare("SELECT suit, number FROM deck ORDER BY RANDOM() LIMIT 1;")?;
     let drawn_card_table_data = drawn_card.query_map(params![], |row| {
         let suit = row.get(0)?;
@@ -107,10 +117,16 @@ async fn start_game(
         Ok(DrawCard{suit, num})
     })?;
     let card = match drawn_card_table_data.last(){
-        None => DrawCard{suit: "None".to_string(), num: 0},
+        None => DrawCard{suit: "None".to_string(), num: "None".to_string()},
         Some(x) => x.unwrap(),
     };
-    dealer += card.num;
+    if card.num == "Jack" || card.num == "Queen" || card.num == "King"{
+        dealer += 10;
+    } else if card.num == "Ace"{
+        dealer += 1;
+    } else {
+        dealer += card.num.parse::<u32>().unwrap();
+    }
     conn.execute("DELETE FROM deck WHERE suit = (?) and number = (?)", params![card.suit, card.num])?;
     conn.execute("INSERT INTO dealer_public_card (suit, number) VALUES (?, ?)", params![card.suit, card.num])?;
     let drawn_card_table_data = drawn_card.query_map(params![], |row| {
@@ -119,10 +135,16 @@ async fn start_game(
         Ok(DrawCard{suit, num})
     })?;
     let card = match drawn_card_table_data.last(){
-        None => DrawCard{suit: "None".to_string(), num: 0},
+        None => DrawCard{suit: "None".to_string(), num: "None".to_string()},
         Some(x) => x.unwrap(),
     };
-    dealer += card.num;
+    if card.num == "Jack" || card.num == "Queen" || card.num == "King"{
+        dealer += 10;
+    } else if card.num == "Ace"{
+        dealer += 1;
+    } else {
+        dealer += card.num.parse::<u32>().unwrap();
+    }
     conn.execute("DELETE FROM deck WHERE suit = (?) and number = (?)", params![card.suit, card.num])?;
     conn.execute("INSERT INTO game_data (player, dealer, stand_flag) VALUES (0, ?, 0)", params![dealer])?;
     Ok(HttpResponse::SeeOther()
@@ -152,11 +174,17 @@ async fn draw_card(
         Ok(DrawCard{suit, num})
     })?;
     let card = match drawn_card_table_data.last(){
-        None => DrawCard{suit: "None".to_string(), num: 0},
+        None => DrawCard{suit: "None".to_string(), num: "None".to_string()},
         Some(x) => x.unwrap(),
     };
     conn.execute("INSERT INTO drawn_card (suit, number) VALUES (?1, $2)", params![card.suit, card.num])?;
-    conn.execute("UPDATE game_data SET player = (?) WHERE id = 1", params![sum + card.num])?;
+    if card.num == "Jack" || card.num == "Queen" || card.num == "King"{
+        conn.execute("UPDATE game_data SET player = (?) WHERE id = 1", params![sum + 10])?;
+    } else if card.num == "Ace"{
+        conn.execute("UPDATE game_data SET player = (?) WHERE id = 1", params![sum + 1])?;
+    } else {
+        conn.execute("UPDATE game_data SET player = (?) WHERE id = 1", params![sum + card.num.parse::<u32>().unwrap()])?;
+    }
     conn.execute("DELETE FROM deck WHERE suit = (?) and number = (?)", params![card.suit, card.num])?;
     Ok(HttpResponse::SeeOther()
         .header(header::LOCATION, "/")
@@ -186,10 +214,16 @@ async fn stand_game(
             Ok(DrawCard{suit, num})
         })?;
         let card = match drawn_card_table_data.last(){
-            None => DrawCard{suit: "None".to_string(), num: 0},
+            None => DrawCard{suit: "None".to_string(), num: "None".to_string()},
             Some(x) => x.unwrap(),
         };
-        dealer += card.num;
+        if card.num == "Jack" || card.num == "Queen" || card.num == "King"{
+            dealer += 10;
+        } else if card.num == "Ace"{
+            dealer += 1;
+        } else {
+            dealer += card.num.parse::<u32>().unwrap();
+        }
         conn.execute("DELETE FROM deck WHERE suit = (?) and number = (?)", params![card.suit, card.num])?;
         if dealer >= 17{
             break dealer;
@@ -229,11 +263,11 @@ async fn index(db: web::Data<Pool<SqliteConnectionManager>>) -> Result<HttpRespo
         Some(x) => x.unwrap(),
     };
     let card = match drawn_card_table_data.last(){
-        None => DrawCard{suit: "None".to_string(), num: 0},
+        None => DrawCard{suit: "None".to_string(), num: "None".to_string()},
         Some(x) => x.unwrap(),
     };
     let dealer_public_card = match dealer_data.last(){
-        None => DrawCard{suit: "None".to_string(), num: 0},
+        None => DrawCard{suit: "None".to_string(), num: "None".to_string()},
         Some(x) => x.unwrap(),
     };
     let result = if game_data.player == 21{
@@ -273,7 +307,7 @@ async fn main() -> Result<(), actix_web::Error>{
         "CREATE TABLE IF NOT EXISTS deck (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             suit TEXT NOT NULL,
-            number INTEGER NOT NULL
+            number TEXT NOT NULL
         )",
         params![],
     ).expect("Failed to create a table `deck`.");
@@ -290,7 +324,7 @@ async fn main() -> Result<(), actix_web::Error>{
         "CREATE TABLE IF NOT EXISTS drawn_card (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             suit TEXT NOT NULL,
-            number INTEGER NOT NULL
+            number TEXT NOT NULL
         )",
         params![],
     ).expect("Failed to create a table `drawn_card`.");
@@ -298,7 +332,7 @@ async fn main() -> Result<(), actix_web::Error>{
         "CREATE TABLE IF NOT EXISTS dealer_public_card (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             suit TEXT NOT NULL,
-            number INTEGER NOT NULL
+            number TEXT NOT NULL
         )",
         params![],
     ).expect("Failed to create a table `dealer_public_card`.");
