@@ -20,4 +20,5 @@ After running above command, you can play this game by accessing
 localhost:8080
 ```
 ## Note
-Jack, Queen, King are interpreted as 10 points in this game, but Ace can be originally selected as 10 or 1, but in this game it is interpreted as only 1 point.
+Jack, Queen, King are interpreted as 10 points in this game.
+Ace can add 1 or 10 points according to the original rules of blackjack, but in this game only 1 point will be added.
