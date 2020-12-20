@@ -9,7 +9,7 @@ docker build -t <container name you want> .
 ```
 Then, run
 ```
-docker run -p 8080:8080 <ame container name as declared at build time above>
+docker run -p 8080:8080 <same container name as declared at build time above>
 ```
 If you will not use docker to run this game, please run
 ```
