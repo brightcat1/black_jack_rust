@@ -7,6 +7,7 @@ If you want to run this game through docker, please run
 ```
 docker build -t <container-name you want> .
 ```
+Then, run
 ```
 docker run -p 8080:8080 <container-name you want>
 ```
