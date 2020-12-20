@@ -3,7 +3,7 @@
 Rust environment construction or Docker environment construction is required
 ## How to play
 - You can do this game by doing following command in black_jack_rust directory.
-If you want to run this game through docker, please run
+If you will use docker to run this game, please run
 ```
 docker build -t <container-name you want> .
 ```
@@ -15,7 +15,7 @@ If you will not use docker to run this game, please run
 ```
 cargo run
 ```
-Then, you can play this game by accessing
+After running above command, you can play this game by accessing
 ```
 localhost:8080
 ```
