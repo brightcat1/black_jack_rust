@@ -10,50 +10,55 @@
 		<div>
 			
 			<div>
-				{% if result != "None" %}
+				{% if player_money == 0 %}
 					<div>{{ result }}</div>
 					<div>Your Total Points: {{ game_data.player }}</div>
 					<div>Dealer Total Points: {{ game_data.dealer }}</div>
+					<div>Your Current Money: {{ player_money }}$</div>
+					GameOver
+					<form action="/newgame" method="post">
+						<button>NEWGAME</button>
+					</form>
+				{% else if result != "None" %}
+					<div>{{ result }}</div>
+					<div>Your Total Points: {{ game_data.player }}</div>
+					<div>Dealer Total Points: {{ game_data.dealer }}</div>
+					<div>Your Current Money: {{ player_money }}$</div>
 					<form action="/start" method="post">
+						<div><input type="number" name="amount" required min=1 max={{ player_money }}></div>
 						<div>
-							<button>RESTART</button>
+							<button>BET</button>
 						</div>
 					</form>
 				{% else if card.suit != "None" %}
 					<div>Dealer Public Card: {{ dealer_public_card.num }}s of {{ dealer_public_card.suit }}</div>
 					<div>Total Points: {{ game_data.player }}</div>
 					<div>Your Current Card: {{ card.num }}s of {{ card.suit }} </div>
+					<div>Your Current Money: {{ player_money }}$</div>
 					<form action="/draw" method="post">
 						<button>HIT</button>
 					</form>
 					<form action="/stand" method="post">
 						<button>STAY</button>
 					</form>
-					<form action="/start" method="post">
-						<div>
-							<button>RESTART</button>
-						</div>
-					</form>
 				{% else if dealer_public_card.suit != "None" %}
 					<div>Dealer Public Card: {{ dealer_public_card.num }}s of {{ dealer_public_card.suit }}</div>
+					<div>Your Current Money: {{ player_money }}$</div>
 					<form action="/draw" method="post">
 						<button>HIT</button>
 					</form>
+				{% endif %}
+				{% if dealer_public_card.suit == "None" %}
+					<div>Your Current Money: {{ player_money }}$</div>
 					<form action="/start" method="post">
+						<div><input type="number" name="amount" required min=1 max={{ player_money }}></div>
 						<div>
-							<button>RESTART</button>
+							<button>BET</button>
 						</div>
 					</form>
 				{% endif %}
 			</div>
 		</div>
-		{% if dealer_public_card.suit == "None" %}
-			<form action="/start" method="post">
-				<div>
-					<button>START</button>
-				</div>
-			</form>
-		{% endif %}
 	</body>
 	
 </html>
