@@ -20,6 +20,7 @@
 						</div>
 					</form>
 				{% else if card.suit != "None" %}
+					<div>Dealer Public Card: {{ dealer_public_card.num }}s of {{ dealer_public_card.suit }}</div>
 					<div>Total Points: {{ game_data.player }}</div>
 					<div>Your Current Card: {{ card.num }}s of {{ card.suit }} </div>
 					<form action="/draw" method="post">
@@ -28,17 +29,25 @@
 					<form action="/stand" method="post">
 						<button>STAY</button>
 					</form>
-				{% else if game_data.dealer != 0 %}
+					<form action="/start" method="post">
+						<div>
+							<button>RESTART</button>
+						</div>
+					</form>
+				{% else if dealer_public_card.suit != "None" %}
+					<div>Dealer Public Card: {{ dealer_public_card.num }}s of {{ dealer_public_card.suit }}</div>
 					<form action="/draw" method="post">
 						<button>HIT</button>
 					</form>
-					<form action="/stand" method="post">
-						<button>STAY</button>
+					<form action="/start" method="post">
+						<div>
+							<button>RESTART</button>
+						</div>
 					</form>
 				{% endif %}
 			</div>
 		</div>
-		{% if game_data.dealer == 0 %}
+		{% if dealer_public_card.suit == "None" %}
 			<form action="/start" method="post">
 				<div>
 					<button>START</button>

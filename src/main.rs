@@ -32,6 +32,7 @@ struct BlackJackTemplate{
     game_data: GameData,
     card: DrawCard,
     result: String,
+    dealer_public_card: DrawCard,
 }
 
 
@@ -58,6 +59,7 @@ async fn start_game(
     conn.execute("DROP TABLE IF EXISTS deck", params![]).expect("Failed to drop a table `deck`.");
     conn.execute("DROP TABLE IF EXISTS game_data", params![]).expect("Failed to drop a table `game_data`.");
     conn.execute("DROP TABLE IF EXISTS drawn_card", params![]).expect("Failed to drop a table `drawn_card`.");
+    conn.execute("DROP TABLE IF EXISTS dealer_public_card", params![]).expect("Failed to drop a table `dealer_public_card`.");
     conn.execute(
         "CREATE TABLE IF NOT EXISTS deck (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -83,6 +85,14 @@ async fn start_game(
         )",
         params![],
     ).expect("Failed to create a table `drawn_card`.");
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS dealer_public_card (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            suit TEXT NOT NULL,
+            number INTEGER NOT NULL
+        )",
+        params![],
+    ).expect("Failed to create a table `dealer_public_card`.");
     conn.execute("INSERT INTO drawn_card (suit, number) VALUES ('None', 0)", params![])?;
     for suit in Suits::iter(){
         for num in 1..=13 {
@@ -90,23 +100,30 @@ async fn start_game(
         }
     }
     let mut dealer =0;
-    loop {
-        let mut drawn_card = conn.prepare("SELECT suit, number FROM deck ORDER BY RANDOM() LIMIT 1;")?;
-        let drawn_card_table_data = drawn_card.query_map(params![], |row| {
-            let suit = row.get(0)?;
-            let num = row.get(1)?;
-            Ok(DrawCard{suit, num})
-        })?;
-        let card = match drawn_card_table_data.last(){
-            None => DrawCard{suit: "None".to_string(), num: 0},
-            Some(x) => x.unwrap(),
-        };
-        dealer += card.num;
-        conn.execute("DELETE FROM deck WHERE suit = (?) and number = (?)", params![card.suit, card.num])?;
-        if dealer >= 17{
-            break dealer;
-        }
+    let mut drawn_card = conn.prepare("SELECT suit, number FROM deck ORDER BY RANDOM() LIMIT 1;")?;
+    let drawn_card_table_data = drawn_card.query_map(params![], |row| {
+        let suit = row.get(0)?;
+        let num = row.get(1)?;
+        Ok(DrawCard{suit, num})
+    })?;
+    let card = match drawn_card_table_data.last(){
+        None => DrawCard{suit: "None".to_string(), num: 0},
+        Some(x) => x.unwrap(),
     };
+    dealer += card.num;
+    conn.execute("DELETE FROM deck WHERE suit = (?) and number = (?)", params![card.suit, card.num])?;
+    conn.execute("INSERT INTO dealer_public_card (suit, number) VALUES (?, ?)", params![card.suit, card.num])?;
+    let drawn_card_table_data = drawn_card.query_map(params![], |row| {
+        let suit = row.get(0)?;
+        let num = row.get(1)?;
+        Ok(DrawCard{suit, num})
+    })?;
+    let card = match drawn_card_table_data.last(){
+        None => DrawCard{suit: "None".to_string(), num: 0},
+        Some(x) => x.unwrap(),
+    };
+    dealer += card.num;
+    conn.execute("DELETE FROM deck WHERE suit = (?) and number = (?)", params![card.suit, card.num])?;
     conn.execute("INSERT INTO game_data (player, dealer, stand_flag) VALUES (0, ?, 0)", params![dealer])?;
     Ok(HttpResponse::SeeOther()
     .header(header::LOCATION, "/")
@@ -152,6 +169,33 @@ async fn stand_game(
 ) -> Result<HttpResponse, MyError> {
     let conn = db.get()?;
     conn.execute("UPDATE game_data SET stand_flag = 1 WHERE id = 1", params![])?;
+    let mut game_data = conn.prepare("SELECT dealer FROM game_data")?;
+    let game_data_table_data = game_data.query_map(params![], |row| {
+        let dealer = row.get(0)?;
+        Ok(dealer)
+    })?;
+    let mut dealer = match game_data_table_data.last(){
+        None => 0,
+        Some(x) => x.unwrap(),
+    };
+    loop {
+        let mut drawn_card = conn.prepare("SELECT suit, number FROM deck ORDER BY RANDOM() LIMIT 1;")?;
+        let drawn_card_table_data = drawn_card.query_map(params![], |row| {
+            let suit = row.get(0)?;
+            let num = row.get(1)?;
+            Ok(DrawCard{suit, num})
+        })?;
+        let card = match drawn_card_table_data.last(){
+            None => DrawCard{suit: "None".to_string(), num: 0},
+            Some(x) => x.unwrap(),
+        };
+        dealer += card.num;
+        conn.execute("DELETE FROM deck WHERE suit = (?) and number = (?)", params![card.suit, card.num])?;
+        if dealer >= 17{
+            break dealer;
+        }
+    };
+    conn.execute("UPDATE game_data SET dealer = (?) WHERE id = 1", params![dealer])?;
     Ok(HttpResponse::SeeOther()
         .header(header::LOCATION, "/")
         .finish())
@@ -162,6 +206,7 @@ async fn index(db: web::Data<Pool<SqliteConnectionManager>>) -> Result<HttpRespo
     let conn = db.get()?;
     let mut draw = conn.prepare("SELECT suit, number FROM drawn_card")?;
     let mut game_data = conn.prepare("SELECT player, dealer, stand_flag FROM game_data")?;
+    let mut dealer = conn.prepare("SELECT suit, number FROM dealer_public_card")?;
     let game_data_row = game_data.query_map(params![], |row| {
         let player = row.get(0)?;
         let dealer = row.get(1)?;
@@ -173,12 +218,21 @@ async fn index(db: web::Data<Pool<SqliteConnectionManager>>) -> Result<HttpRespo
         let num = row.get(1)?;
         Ok(DrawCard{suit, num})
     })?;
+    let dealer_data = dealer.query_map(params![], |row| {
+        let suit = row.get(0)?;
+        let num = row.get(1)?;
+        Ok(DrawCard{suit, num})
+    })?;
 
     let game_data = match game_data_row.last(){
         None => GameData{player: 0, dealer: 0, stand: 0},
         Some(x) => x.unwrap(),
     };
     let card = match drawn_card_table_data.last(){
+        None => DrawCard{suit: "None".to_string(), num: 0},
+        Some(x) => x.unwrap(),
+    };
+    let dealer_public_card = match dealer_data.last(){
         None => DrawCard{suit: "None".to_string(), num: 0},
         Some(x) => x.unwrap(),
     };
@@ -197,7 +251,7 @@ async fn index(db: web::Data<Pool<SqliteConnectionManager>>) -> Result<HttpRespo
     } else {
         "None".to_string()
     };
-    let html = BlackJackTemplate{ game_data, card, result };
+    let html = BlackJackTemplate{ game_data, card, result, dealer_public_card };
     let response_body = html.render()?;
     Ok(HttpResponse::Ok()
         .content_type("text/html")
@@ -240,6 +294,14 @@ async fn main() -> Result<(), actix_web::Error>{
         )",
         params![],
     ).expect("Failed to create a table `drawn_card`.");
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS dealer_public_card (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            suit TEXT NOT NULL,
+            number INTEGER NOT NULL
+        )",
+        params![],
+    ).expect("Failed to create a table `dealer_public_card`.");
     HttpServer::new(move || {
         App::new()
         .service(index)
