@@ -2,7 +2,7 @@
 ## Prerequisite
 Rust environment construction or Docker environment construction is required
 ## How to play
-- You can do this game by doing following command in black_jack_rust directory.
+You can do this game by doing following command in black_jack_rust directory.
 If you will use docker to run this game, please run
 ```
 docker build -t <container name you want> .
