@@ -32,7 +32,7 @@
 					</form>
 				{% else if card.suit != "None" %}
 					<div>Dealer Public Card: {{ dealer_public_card.num }}s of {{ dealer_public_card.suit }}</div>
-					<div>Total Points: {{ game_data.player }}</div>
+					<div>Your Total Points: {{ game_data.player }}</div>
 					<div>Your Current Card: {{ card.num }}s of {{ card.suit }} </div>
 					<div>Your Current Money: {{ player_money }}$</div>
 					<form action="/draw" method="post">
