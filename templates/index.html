@@ -1,64 +1,117 @@
 <!DOCTYPE html>
 <html>
 
-	<head>
-		<meta charset="utf-8" />
-		<title>Black Jack</title>
-	</head>
+    <head>
+        <meta charset="utf-8" />
+        <title>Black Jack</title>
+        <style>
+            body {
+                font-family: 'Playfair Display', serif;
+                background-color: #2e2e2e;
+                color: white;
+                text-align: center;
+                padding-top: 5%;
+                background: radial-gradient(circle, #2e2e2e, #000000);
+            }
+
+            .container {
+                background-color: #444;
+                border: 1px solid #555;
+                border-radius: 10px;
+                padding: 20px;
+                width: 400px;
+                margin: auto;
+                box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.7);
+            }
+
+            h1 {
+                font-size: 3em;
+                text-shadow: 2px 2px 4px #ff0000, 0 0 25px #ff00ff, 0 0 5px #0000ff;
+            }
+
+            .number {
+                font-size: 1.5em;
+            }
+
+            button {
+                background-color: #333;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                margin: 5px;
+                border-radius: 5px;
+                cursor: pointer;
+                transition: 0.3s;
+                box-shadow: 0px 0px 5px rgba(255, 255, 255, 0.7);
+            }
+
+            button:hover {
+                background-color: #555;
+            }
+
+            form div {
+                margin-top: 15px;
+            }
+
+            input[type="number"] {
+                padding: 5px;
+                border-radius: 5px;
+                border: 1px solid #777;
+            }
+        </style>
+    </head>
 
 	<body>
-		<div>
-			
-			<div>
-				{% if player_money == 0 %}
-					<div>{{ result }}</div>
-					<div>Your Total Points: {{ game_data.player }}</div>
-					<div>Dealer Total Points: {{ game_data.dealer }}</div>
-					<div>Your Current Money: {{ player_money }}$</div>
-					GameOver
-					<form action="/newgame" method="post">
-						<button>NEWGAME</button>
-					</form>
-				{% else if result != "None" %}
-					<div>{{ result }}</div>
-					<div>Your Total Points: {{ game_data.player }}</div>
-					<div>Dealer Total Points: {{ game_data.dealer }}</div>
-					<div>Your Current Money: {{ player_money }}$</div>
-					<form action="/start" method="post">
-						<div><input type="number" name="amount" required min=1 max={{ player_money }}></div>
-						<div>
-							<button>BET</button>
-						</div>
-					</form>
-				{% else if card.suit != "None" %}
-					<div>Dealer Public Card: {{ dealer_public_card.num }}s of {{ dealer_public_card.suit }}</div>
-					<div>Your Total Points: {{ game_data.player }}</div>
-					<div>Your Current Card: {{ card.num }}s of {{ card.suit }} </div>
-					<div>Your Current Money: {{ player_money }}$</div>
-					<form action="/draw" method="post">
-						<button>HIT</button>
-					</form>
-					<form action="/stand" method="post">
-						<button>STAY</button>
-					</form>
-				{% else if dealer_public_card.suit != "None" %}
-					<div>Dealer Public Card: {{ dealer_public_card.num }}s of {{ dealer_public_card.suit }}</div>
-					<div>Your Current Money: {{ player_money }}$</div>
-					<form action="/draw" method="post">
-						<button>HIT</button>
-					</form>
-				{% endif %}
-				{% if dealer_public_card.suit == "None" %}
-					<div>Your Current Money: {{ player_money }}$</div>
-					<form action="/start" method="post">
-						<div><input type="number" name="amount" required min=1 max={{ player_money }}></div>
-						<div>
-							<button>BET</button>
-						</div>
-					</form>
-				{% endif %}
-			</div>
-		</div>
+		<h1>Black Jack</h1>
+        <div class="container">
+            {% if player_money == 0 %}
+                <div>{{ result }}</div>
+                <div>Your Total Points: {{ game_data.player }}</div>
+                <div>Dealer Total Points: {{ game_data.dealer }}</div>
+                <div>Your Current Money: {{ player_money }}$</div>
+                GameOver
+                <form action="/newgame" method="post">
+                    <button>NEWGAME</button>
+                </form>
+            {% else if result != "None" %}
+                <div>{{ result }}</div>
+                <div>Your Total Points: {{ game_data.player }}</div>
+                <div>Dealer Total Points: {{ game_data.dealer }}</div>
+                <div>Your Current Money: {{ player_money }}$</div>
+                <form action="/start" method="post">
+                    <div><input type="number" name="amount" required min=1 max={{ player_money }}></div>
+                    <div>
+                        <button>BET</button>
+                    </div>
+                </form>
+            {% else if card.suit != "None" %}
+                <div>Dealer Public Card: {{ dealer_public_card.num }}s of {{ dealer_public_card.suit }}</div>
+                <div>Your Total Points: {{ game_data.player }}</div>
+                <div>Your Current Card: {{ card.num }}s of {{ card.suit }} </div>
+                <div>Your Current Money: {{ player_money }}$</div>
+                <form action="/draw" method="post">
+                    <button>HIT</button>
+                </form>
+                <form action="/stand" method="post">
+                    <button>STAY</button>
+                </form>
+            {% else if dealer_public_card.suit != "None" %}
+                <div>Dealer Public Card: {{ dealer_public_card.num }}s of {{ dealer_public_card.suit }}</div>
+                <div>Your Current Money: {{ player_money }}$</div>
+                <form action="/draw" method="post">
+                    <button>HIT</button>
+                </form>
+            {% endif %}
+            {% if dealer_public_card.suit == "None" %}
+                <div>Your Current Money: {{ player_money }}$</div>
+                <form action="/start" method="post">
+                    <div><input type="number" name="amount" required min=1 max={{ player_money }}></div>
+                    <div>
+                        <button>BET</button>
+                    </div>
+                </form>
+            {% endif %}
+        </div>
 	</body>
 	
 </html>
