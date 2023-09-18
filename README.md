@@ -1,24 +1,43 @@
 # black_jack_rust
+
+A Rust-based web application offering a game of Blackjack.
+
 ## Prerequisite
-Rust environment construction or Docker environment construction is required
+
+- Ensure you have set up the Rust environment or have a Docker environment ready.
+
 ## How to play
-You can do this game by doing following command in black_jack_rust directory.
-If you will use docker to run this game, please run
-```
-docker build -t <container name you want> .
-```
-Then, run
-```
-docker run -p 8080:8080 <same container name as declared at build time above>
-```
-If you will not use docker to run this game, please run
-```
+
+Navigate to the `black_jack_rust` directory to start the game.
+
+### Using Docker:
+
+1. Build the Docker image:
+docker build -t <desired_container_name> .
+
+2. Run the Docker container:
+docker run -p 8080:8080 <same_container_name_as_above>
+
+### Without Docker:
+
+Execute the following command:
 cargo run
-```
-After running above command, you can play this game by accessing
-```
+
+After starting the application, access it at:
 localhost:8080
-```
+
 ## Note
-Jack, Queen, King are interpreted as 10 points in this game.
-Ace can add 1 or 10 points according to the original rules of blackjack, but in this game only 1 point will be added.
+
+- In this version of Blackjack, Jack, Queen, and King are valued at 10 points.
+- While traditionally in Blackjack an Ace can be worth 1 or 11 points, in this game, an Ace is always valued at 1 point.
+
+## Libraries & Tools (Licensed under Apache License 2.0)
+
+This section highlights libraries licensed under the Apache License 2.0 used in this project:
+
+- actix-web (version 3.3.2): [GitHub Repository](https://github.com/actix/actix-web)
+- actix-rt (version 1.1.1): [GitHub Repository](https://github.com/actix/actix-net)
+- thiserror (version 1.0.22): [GitHub Repository](https://github.com/dtolnay/thiserror)
+- askama (version 0.10.5): [GitHub Repository](https://github.com/djc/askama)
+
+Note: There are other libraries used in this project, but only those with Apache License 2.0 are highlighted here for specific mention.
